@@ -19,14 +19,11 @@ TODO
 # Import additional modules, if fail, raise an error
 # =============================================================================
 try:
-    import os
-    import numpy as np
-    import matplotlib.pyplot as plt
     import tkinter as tk
     from tkinter import ttk
-    from tkinter import filedialog
     from tkinter import messagebox
     import serial
+    from guiLoop import guiLoop
     
 
 except ModuleNotFoundError as imp_error:
@@ -71,6 +68,7 @@ def connectToArduino():
                 global connection_status
                 connection_status = "ON"
                 status_led.create_oval(coord, fill=status_colors[connection_status])
+                read_data(window)
             else:
                 messagebox.showwarning("Warning", "Connection can not be stablished")
         except serial.serialutil.SerialException:
@@ -88,15 +86,15 @@ def ComboboxPort(event):
     global selected_port
     selected_port = port_select.get()
     
-    
-def send_data(channel, relay, shutter):
-    if connection_status == "OFF":
-       messagebox.showerror("Error", "No connection found")
-    else:
-         text_to_send = "<"+str(channel)+","+str(relay)+","+str(shutter)+">"
-         print(text_to_send)
-         ArduinoSerial.write(text_to_send.encode("utf-8"))
 
+@guiLoop
+def read_data():
+    while True:
+        msg = ArduinoSerial.readline()
+        print(msg)
+        yield 10
+        
+        
 # =============================================================================
 # Set up GUI
 # =============================================================================
@@ -104,7 +102,8 @@ window = tk.Tk()
 
 window.geometry('500x650')
 window.title("Multiplexer Control")
-window.resizable(False, False)
+# window.resizable(False, False)
+window.resizable(True, True)
 
 # =============================================================================
 # Create the drop-down menu and the drop-down buttons
@@ -236,7 +235,7 @@ class Channel():
                 self.status["shutter"] = "ON"
                 self.status_led_shutter.create_oval(coord, fill=status_colors[self.status["shutter"]])
             text_to_send = "<"+str(self.n)+","+str(self.bit_equivalent[self.status["relay"]])+","+str(self.bit_equivalent[self.status["shutter"]])+">"
-            print(text_to_send)
+            # print(text_to_send)
             ArduinoSerial.write(text_to_send.encode("utf-8"))
             
             
@@ -255,22 +254,30 @@ class Channel():
             ArduinoSerial.write(text_to_send.encode("utf-8"))
 
 
-channel1 = Channel(0, 0, 1)
-channel2 = Channel(1, 0, 2)
-channel3 = Channel(2, 0, 3)
-channel4 = Channel(3, 0, 4)
+#Better to have a list with all the channels so we can access them by index
+channels = []
+c1 = 1
+c2 = 1
+for i in range(8):
+    if c1 <= 4:
+        channels.append(Channel(i, 0, c1))
+        c1 += 1
+    else:
+        channels.append(Channel(i, 1, c2))
+        c2 += 1
 
-channel5 = Channel(4, 1, 1)
-channel6 = Channel(5, 1, 2)
-channel7 = Channel(6, 1, 3)
-channel8 = Channel(7, 1, 4)
+# channel1 = Channel(0, 0, 1)
+# channel2 = Channel(1, 0, 2)
+# channel3 = Channel(2, 0, 3)
+# channel4 = Channel(3, 0, 4)
+
+# channel5 = Channel(4, 1, 1)
+# channel6 = Channel(5, 1, 2)
+# channel7 = Channel(6, 1, 3)
+# channel8 = Channel(7, 1, 4)
 
 
-
-
-
-
-
+# read_data(window)
 
 
 

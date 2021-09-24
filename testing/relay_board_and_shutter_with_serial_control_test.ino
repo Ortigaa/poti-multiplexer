@@ -31,6 +31,9 @@ int analogValues[numChannels];
 bool relayStatus[numChannels];
 bool shutterStatus[numChannels];
 
+unsigned long previousMillis[numChannels];
+long pulseWidth = 90; //ms
+
 // variables to store parsed data
 const byte numChars = 32;
 char receivedChars[numChars];
@@ -41,6 +44,8 @@ int relay = 0;
 boolean newData = false;
 
 //============
+// Read data arriving via serial. The data MUST have a defined structure to be read with this protocol
+// <channel, relay_status, shutter_status>
 void recvWithStartEndMarkers() {
     static boolean recvInProgress = false;
     static byte ndx = 0;
@@ -76,7 +81,7 @@ void parseData() {      // split the data into its parts
 
     char * strtokIndx; // this is used by strtok() as an index
 
-    strtokIndx = strtok(tempChars, ","); //get the first part to define the relay
+    strtokIndx = strtok(tempChars, ","); //get the first part to define the channel
     relay = atoi(strtokIndx);
 
     strtokIndx = strtok(NULL, ","); // get the second part to define the state of relay.
@@ -102,26 +107,25 @@ void showParsedData() {
 // Read the analog channels one at a time and operate the relays and shutters accordingly
 void analogReadings() {
   for (int i = 0; i < numChannels; i++){
+    unsigned long currentMillis = millis();
     analogValues[i] = analogRead(analog_pins[i]);
-    delay(10);
-    analogValues[i] = analogRead(analog_pins[i]);
-    if (analogValues[i] >= 650 && relayStatus[i] == false){
-      //Serial.println("ON");
-      digitalWrite(RELAY_PINS[i], HIGH);
-      relayStatus[i] = true;
-      servos[i].write(90);
-      shutterStatus[i] = true;
-      delay(10);
+    if (currentMillis - previousMillis[i] > pulseWidth){
+      previousMillis[i] = currentMillis;
+      if (analogValues[i] >= 650 && relayStatus[i] == false){
+        //Serial.println("ON");
+        digitalWrite(RELAY_PINS[i], HIGH);
+        relayStatus[i] = true;
+        servos[i].write(90);
+        shutterStatus[i] = true;
+      }
+      else if (analogValues[i] >= 650 && relayStatus[i] == true){
+        //Serial.println("OFF");
+        digitalWrite(RELAY_PINS[i], LOW);
+        relayStatus[i] = false;
+        servos[i].write(0);
+        shutterStatus[i] = false;
+      }
     }
-    else if (analogValues[i] >= 650 && relayStatus[i] == true){
-      //Serial.println("OFF");
-      digitalWrite(RELAY_PINS[i], LOW);
-      relayStatus[i] = false;
-      servos[i].write(0);
-      shutterStatus[i] = false;
-      delay(10);
-    }
-    delay(10);
   }
 }
 //============
